@@ -1,0 +1,10 @@
+pipeline:
+  publish:
+    image: plugins/docker
+    repo: futurelearn/drone-mail
+    tags:
+      - latest
+      - "${DRONE_BUILD_NUMBER}"
+    secrets: [ docker_username, docker_password ]
+    when:
+      branch: master
