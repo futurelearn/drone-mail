@@ -23,6 +23,10 @@ class Mail
     'Placeholder text'
   end
 
+  def subject
+    Plugin.new.subject || 'You have a new email from Drone'
+  end
+
   def payload
     {
       destination: {
@@ -143,6 +147,10 @@ class Plugin
 
   def aws_region
     set_parameter("aws_region", false)
+  end
+
+  def encoding
+    set_parameter("encoding", false)
   end
 end
 
