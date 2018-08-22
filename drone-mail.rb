@@ -4,34 +4,54 @@
 require 'aws-sdk-ses'
 
 class Mail
-  attr :client
+  attr :client, :plugin, :drone
 
   def initialize
     aws_region = Plugin.new.aws_region || 'eu-west-1'
     @client = Aws::SES::Client.new(region: aws_region)
+    @plugin = Plugin.new
+    @drone = Drone.new
   end
 
   def encoding
-    Plugin.new.encoding || 'UTF-8'
+    plugin.encoding || 'UTF-8'
   end
 
   def htmlbody
-    '<h1>Some HTML</h1>'
+    <<~HEREDOC
+    <h2>Drone <a href=#{drone.link}>Build #{drone.build}</a>: #{drone.status}</h2>
+
+    <table>
+    <tr><td>Branch</td><td align="left">#{drone.branch}</td></tr>
+    <tr><td>Committer</td><td align="left">#{drone.author}</td></tr>
+    <tr><td>Repository</td><td align="left">#{drone.repo_name}</td></tr>
+    <tr><td>Commit</td><td align="left">#{drone.commit_link}</td></tr>
+    <tr><td>Time taken</td><td align="left">#{time_taken}</td></tr>
+    <table>
+    HEREDOC
   end
 
   def textbody
-    'Placeholder text'
+    <<~HEREDOC
+    Build #{drone.build} #{drone.status}: #{drone.link}
+
+    Branch: #{drone.branch}
+    Committer: #{drone.author}
+    Repository: #{drone.repo_name}
+    Commit: #{drone.commit_link}
+    Time taken: #{time_taken}
+    HEREDOC
   end
 
   def subject
-    Plugin.new.subject || 'You have a new email from Drone'
+    plugin.subject || "Drone build #{drone.build} #{drone.status}: #{drone.branch}"
   end
 
   def payload
     {
       destination: {
         to_addresses: [
-          Plugin.new.recipient,
+          plugin.recipient,
         ],
       },
       message: {
@@ -50,8 +70,29 @@ class Mail
           data: subject,
         },
       },
-      source: Plugin.new.sender,
+      source: plugin.sender,
     }
+  end
+
+  def status
+    if drone.status == 'success'
+      "succeeded"
+    else
+      "failed"
+    end
+  end
+
+  def time_taken
+    seconds = drone.finished.to_i - drone.started.to_i
+    if seconds < 60
+      return "#{seconds}s"
+    end
+
+    if seconds < 3600
+      return Time.at(seconds).utc.strftime("%Mm %Ss")
+    end
+
+    Time.at(seconds).utc.strftime("%H:%M:%S")
   end
 
   def send
@@ -116,7 +157,6 @@ class Drone
   def commit_link
     drone_env("commit_link")
   end
-
 end
 
 class Plugin
