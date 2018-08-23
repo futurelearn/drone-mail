@@ -47,11 +47,16 @@ class Mail
     plugin.subject || "Drone build #{drone.build} #{drone.status}: #{drone.branch}"
   end
 
+  def recipient
+    return plugin.recipient if plugin.recipient
+    drone.author_email
+  end
+
   def payload
     {
       destination: {
         to_addresses: [
-          plugin.recipient,
+          recipient,
         ],
       },
       message: {
@@ -114,6 +119,10 @@ class Drone
     drone_env("commit_author")
   end
 
+  def author_email
+    drone_env("commit_author_email")
+  end
+
   def branch
     drone_env("commit_branch")
   end
@@ -173,12 +182,14 @@ class Plugin
     ENV[parameter]
   end
 
-  def recipient
-    set_parameter("recipient")
-  end
-
   def sender
     set_parameter("sender")
+  end
+
+  # Set to send specifically to a recipient, if this is not set
+  # then it will send automatically the email of the commit author
+  def recipient
+    set_parameter("recipient", false)
   end
 
   def subject
