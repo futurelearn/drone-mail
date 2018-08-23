@@ -1,5 +1,5 @@
 pipeline:
-  publish:
+  publish master:
     image: plugins/docker
     repo: futurelearn/drone-mail
     tags:
@@ -8,3 +8,12 @@ pipeline:
     secrets: [ docker_username, docker_password ]
     when:
       branch: master
+  publish branch:
+    image: plugins/docker
+    repo: futurelearn/drone-mail
+    tags:
+      - "${DRONE_COMMIT_BRANCH}"
+    secrets: [ docker_username, docker_password ]
+    when:
+      branch:
+        exclude: [ master ]
