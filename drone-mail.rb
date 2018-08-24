@@ -100,11 +100,28 @@ class Mail
     Time.at(seconds).utc.strftime("%H:%M:%S")
   end
 
+  def send_check
+    return true if plugin.always_send
+
+    if drone.status == 'success' && drone.prev_build_status == 'failure'
+      true
+    elsif drone.status == 'failure'
+      true
+    else
+      false
+    end
+  end
+
   def send
-    begin
-      client.send_email(payload)
-    rescue Aws::SES::Errors::ServiceError => error
-      puts "Email not sent! Error message: #{error}"
+    if send_check
+      begin
+        client.send_email(payload)
+      rescue Aws::SES::Errors::ServiceError => error
+        puts "Email not sent! Error message: #{error}"
+      end
+      puts "Build broken or recovered. Email sent to #{recipient}"
+    else
+      puts "Build in a good place. Not sending email."
     end
   end
 end
@@ -166,6 +183,10 @@ class Drone
   def commit_link
     drone_env("commit_link")
   end
+
+  def prev_build_status
+    drone_env("prev_build_status")
+  end
 end
 
 class Plugin
@@ -190,6 +211,10 @@ class Plugin
   # then it will send automatically the email of the commit author
   def recipient
     set_parameter("recipient", false)
+  end
+
+  def always_send
+    set_parameter("always_send", false)
   end
 
   def subject
